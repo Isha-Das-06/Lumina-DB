@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package lumina;
+
+option go_package = "github.com/user/luminadb/proto";
+
+// --- Client API ---
+
+service Lumina {
+    rpc Put(PutRequest) returns (PutResponse);
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+message PutRequest {
+    string key = 1;
+    bytes value = 2;
+}
+
+message PutResponse {
+    bool success = 1;
+    string leader_id = 2; // Redirect if not leader
+}
+
+message GetRequest {
+    string key = 1;
+}
+
+message GetResponse {
+    bytes value = 1;
+    bool found = 2;
+}
+
+message DeleteRequest {
+    string key = 1;
+}
+
+message DeleteResponse {
+    bool success = 1;
+}
+
+// --- Raft Consensus API ---
+
+service Consensus {
+    rpc RequestVote(VoteRequest) returns (VoteResponse);
+    rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+}
+
+message VoteRequest {
+    uint64 term = 1;
+    string candidate_id = 2;
+    uint64 last_log_index = 3;
+    uint64 last_log_term = 4;
+}
+
+message VoteResponse {
+    uint64 term = 1;
+    bool vote_granted = 2;
+}
+
+message AppendEntriesRequest {
+    uint64 term = 1;
+    string leader_id = 2;
+    uint64 prev_log_index = 3;
+    uint64 prev_log_term = 4;
+    repeated LogEntry entries = 5;
+    uint64 leader_commit = 6;
+}
+
+message AppendEntriesResponse {
+    uint64 term = 1;
+    bool success = 2;
+    uint64 conflict_index = 3; // For fast log synchronization
+}
+
+message LogEntry {
+    uint64 index = 1;
+    uint64 term = 2;
+    enum CommandType {
+        PUT = 0;
+        DELETE = 1;
+    }
+    CommandType type = 3;
+    string key = 4;
+    bytes value = 5;
+}
